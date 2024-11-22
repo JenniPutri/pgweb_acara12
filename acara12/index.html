@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- leaflet css link -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"
+    />
+    <title>WebGIS Sleman</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        width: 100%;
+        height: 100vh;
+      }
+      .legend {
+        background: white;
+        padding: 50px;
+        border-radius: 5px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        height: 200px; /* Set fixed height */
+        overflow-y: auto; /* Enable vertical scroll */
+        max-width: 300px; /* Set maximum width if needed */
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+  </body>
+</html>
+
+<!-- leaflet js link -->
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<!-- leaflet control geocoder link -->
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<!-- leaflet geoserver request link -->
+<script src="lib/L.Geoserver.js"></script>
+<script>
+  // Initialize map centered on Sleman
+  var map = L.map("map", {
+    center: [-7.7165, 110.3554],
+    zoom: 11,
+    zoomControl: false, // Disable default zoom control
+  });
+
+  // Base layer: OpenStreetMap
+  var osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(map);
+
+  // WMS Layer: Batas Administrasi
+  var adminBoundary = L.Geoserver.wms("http://localhost:8080/geoserver/wms", {
+    layers: "pgweb_acara10:ADMINISTRASIDESA_AR_25K",
+    transparent: true,
+    format: "image/png",
+  });
+
+  // WMS Layer: Jalan (Geoportal Sleman)
+  var roadsLayer = L.Geoserver.wms(
+    "https://geoportal.slemankab.go.id/geoserver/wms",
+    {
+      layers: "geonode:jalan_kabupaten_sleman_2023", 
+      transparent: true,
+      format: "image/png",
+    }
+  );
+  roadsLayer.addTo(map); 
+
+  // WMS Layer: Pendidikan
+  var educationLayer = L.Geoserver.wms("http://localhost:8080/geoserver/wms", {
+    layers: "pgweb12:PENDIDIKAN_PT_25K", 
+    transparent: true,
+    format: "image/png",
+  });
+
+  // Add Layers to the Map
+  adminBoundary.addTo(map); 
+  educationLayer.addTo(map); 
+  
+  // Control Zoom
+  L.control.zoom({
+    position: "topright",
+  }).addTo(map);
+
+  // Search Control
+  var searchControl = L.Control.geocoder({
+    defaultMarkGeocode: false,
+  }).on("markgeocode", function (e) {
+    map.setView(e.geocode.center, 14); // Zoom in to the selected area
+  }).addTo(map);
+
+  // Overlay Maps
+  var overlayMaps = {
+    "Batas Administrasi": adminBoundary,
+    "Jalan Kabupaten Sleman": roadsLayer,
+    "Pendidikan": educationLayer,
+  };
+
+  // Base Maps
+  var baseMaps = {
+    OpenStreetMap: osm,
+  };
+
+  // Add Layer Control
+  L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+  // Optional: Add legends to map with scroll functionality
+  var adminLegend = L.Geoserver.legend("http://localhost:8080/geoserver/wms", {
+    layers: "pgweb_acara10:ADMINISTRASIDESA_AR_25K",
+  }).addTo(map);
+
+  var roadsLegend = L.Geoserver.legend(
+    "https://geoportal.slemankab.go.id/geoserver/wms",
+    {
+      layers: "geonode:jalan_kabupaten_sleman_2023",
+    }
+  ).addTo(map);
+
+  var educationLegend = L.Geoserver.legend("http://localhost:8080/geoserver/wms", {
+    layers: "pgweb12:PENDIDIKAN_PT_25K",
+  }).addTo(map);
+
+  // Add Popup on map click to show coordinates
+  map.on("click", function (e) {
+    var lat = e.latlng.lat;
+    var lng = e.latlng.lng;
+
+    // Create a popup with the coordinates
+    var popupContent = "<b>Coordinates:</b><br>Latitude: " + lat + "<br>Longitude: " + lng;
+    L.popup()
+      .setLatLng(e.latlng)
+      .setContent(popupContent)
+      .openOn(map);
+  });
+</script>
